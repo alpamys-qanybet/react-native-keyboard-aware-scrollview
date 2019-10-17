@@ -1,3 +1,20 @@
+## To make it work install from master:
+```yarn add alpamys-qanybet/react-native-keyboard-aware-scrollview#master```
+
+## Important!
+you should change your ```package.json```:
+
+```
+"dependencies": {
+  ...
+  "react-native-keyboard-aware-scrollview": "https://github.com/alpamys-qanybet/react-native-keyboard-aware-scrollview/tarball/master",
+},
+
+```
+
+or use specific commit
+more about it [here](http://debuggable.com/posts/how-to-fork-patch-npm-modules:4e2eb9f3-e584-44be-b1a9-3db7cbdd56cb)
+
 # react-native-keyboard-aware-scrollview
 A helper component meant to be used as a drop-in replacement for RN ScrollView which handles the ScrollView insets properly when the keyboard is shown or hides so all the content is scrollable and available to the user.
 
