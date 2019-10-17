@@ -7,7 +7,9 @@ import ReactNative, {
   DeviceEventEmitter,
   Keyboard,
   NativeModules,
-  InteractionManager
+  InteractionManager,
+  Alert,
+  Platform,
 } from 'react-native';
 
 const ScrollViewManager = NativeModules.ScrollViewManager;
@@ -18,25 +20,32 @@ export default class KeyboardAwareBase extends Component {
     this._bind('_onKeyboardWillShow', '_onKeyboardWillHide', '_addKeyboardEventListeners', '_removeKeyboardListeners', '_scrollToFocusedTextInput', '_onKeyboardAwareViewLayout', 'scrollToBottom', 'scrollBottomOnNextSizeChange');
     this.state = {keyboardHeight: 0};
   }
-  
+
+  _enabled = true;
+
   _bind(...methods) {
     methods.forEach((method) => {
       this[method] = this[method].bind(this);
     });
   }
-  
+
   _addKeyboardEventListeners() {
     const KeyboardEventsObj = Keyboard || DeviceEventEmitter;
+    // this.keyboardEventListeners = [
+    //   KeyboardEventsObj.addListener('keyboardWillShow', this._onKeyboardWillShow),
+    //   KeyboardEventsObj.addListener('keyboardWillHide', this._onKeyboardWillHide)
+    // ];
+
     this.keyboardEventListeners = [
-      KeyboardEventsObj.addListener('keyboardWillShow', this._onKeyboardWillShow),
-      KeyboardEventsObj.addListener('keyboardWillHide', this._onKeyboardWillHide)
+      KeyboardEventsObj.addListener(Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow', this._onKeyboardWillShow),
+      KeyboardEventsObj.addListener(Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide', this._onKeyboardWillHide)
     ];
   }
-  
+
   _removeKeyboardListeners() {
     this.keyboardEventListeners.forEach((eventListener) => eventListener.remove());
   }
-  
+
   componentWillMount() {
     this._addKeyboardEventListeners();
   }
@@ -46,6 +55,12 @@ export default class KeyboardAwareBase extends Component {
       this.scrollToBottom(false);
       setTimeout(() => this._keyboardAwareView.setNativeProps({ opacity: 1 }), 100);
     }
+
+    this._wixKeyboardAwareScrollViewProblemScrollOnPageTransitionsEventListener = global._wixKeyboardAwareScrollViewProblemScrollOnPageTransitionsEmitter.addListener('change', (data) => {
+      if (data.activeScreen === this.props.activeScreen) {
+        this._enabled = data.enabled;
+      }
+    });
   }
 
   _onKeyboardAwareViewLayout(layout) {
@@ -75,9 +90,14 @@ export default class KeyboardAwareBase extends Component {
 
   componentWillUnmount() {
     this._removeKeyboardListeners();
+    this._wixKeyboardAwareScrollViewProblemScrollOnPageTransitionsEventListener.remove();
   }
-  
+
   _scrollToFocusedTextInput() {
+    if (!this._enabled) {
+      return;
+    }
+
     if (this.props.getTextInputRefs) {
       const textInputRefs = this.props.getTextInputRefs();
       textInputRefs.some((textInputRef, index, array) => {
@@ -92,16 +112,20 @@ export default class KeyboardAwareBase extends Component {
         return isFocused;
       });
     }
+
   }
-  
+
   _onKeyboardWillShow(event) {
+    if (!this._enabled) {
+      return;
+    }
     this._scrollToFocusedTextInput();
-    
+
     const newKeyboardHeight = event.endCoordinates.height;
     if (this.state.keyboardHeight === newKeyboardHeight) {
       return;
     }
-    
+
     this.setState({keyboardHeight: newKeyboardHeight});
 
     if(this.props.scrollToBottomOnKBShow) {
@@ -110,6 +134,9 @@ export default class KeyboardAwareBase extends Component {
   }
 
   _onKeyboardWillHide(event) {
+    if (!this._enabled) {
+      return;
+    }
     const keyboardHeight = this.state.keyboardHeight;
     this.setState({keyboardHeight: 0});
 
